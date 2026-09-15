@@ -4,7 +4,7 @@ import math
 class Personagem:
 
     #difinições dos atributos dos personagens
-    def __init__(self, x, y, largura, altura, cor,vida, velocidade, massa, x_mapa, y_mapa):
+    def __init__(self, x, y, largura, altura, cor,vida, velocidade, massa):
         self.x = x
         self.y = y
         self.largura = largura
@@ -16,8 +16,6 @@ class Personagem:
         self.dano = massa*velocidade
         self.chao = True
         self.original_y = 0
-        self.x_mapa = x_mapa
-        self.y_mapa = y_mapa
         #velocidade é usada no lugar da aceleração
    
     """def set_cor(self, cor):
@@ -59,19 +57,6 @@ class Personagem:
         )
 
         return colisao_B or colisao_inimigo
-    
-    def colisao_alcance_ataque_personagem(self, inimigo):
-            alcance = 5 #não tem como tacar dentro do inimigo, então tem que atacar antes
-
-            return(
-                inimigo.vida > 0 #para a colisao sumir apos o inimigo morrer
-                and
-                self.x  - alcance< inimigo.x + inimigo.largura #o alcance começa antes da coodenada x do personagem, lembrar que a coordena começa no centro dele  < que o quadrado do inimigo
-                and self.x + self.largura + alcance> inimigo.x #quadrado do personagem > que coodernada x do inimigo
-                and self.y - alcance < inimigo.y + inimigo.altura #o alcance começa antes da coodenada y do personagem, lembrar que a coordena começa no centro dele < que o quadrado do inimigo (y cresce para baixo)
-                and self.y + self.altura + alcance> inimigo.y #quadrado do personagem > que coodernada y do inimigo (y cresce para baixo)
-        )
-
 
     def movimentacao(
         self,
@@ -90,8 +75,8 @@ class Personagem:
             if self.colisao(personagemB, inimigo):# chamei a funcao colisao
                 self.x -= self.velocidade #se a colisao for True, personagens não ocupam o mesmo espaço
 
-            if self.x > self.x_mapa - self.largura:#fica dentro do espaço da tela
-                self.x = self.x_mapa - self.largura
+            if self.x > 160 - self.largura:#fica dentro do espaço da tela
+                self.x = 160 - self.largura
 
         if pyxel.btn(esquerda):
             self.x -= self.velocidade #caminha o equivalente a velocidade
@@ -108,8 +93,8 @@ class Personagem:
             if self.colisao(personagemB, inimigo):
                 self.y -= self.velocidade
 
-            if self.y > self.y_mapa - self.altura:
-                self.y = self.y_mapa - self.altura
+            if self.y > 120 - self.altura:
+                self.y = 120 - self.altura
 
         if pyxel.btn(cima):
             self.y -= self.velocidade
@@ -121,20 +106,14 @@ class Personagem:
             if self.y < 0:
                 self.y = 0
 
-    def combate(self, ataque,pulo, Inimigo, personagemB):
+    def combate(self, ataque,pulo, Inimigo):
         if Inimigo.vida > 0:
-            if pyxel.btnp(ataque) and self.vida > 0:
-                if self.colisao_alcance_ataque_personagem(Inimigo):
-                    Inimigo.vida -= self.dano
-        if pyxel.btnp(pulo) and self.chao:
+            if pyxel.btnp(ataque):
+                Inimigo.vida -= self.dano
+        if pyxel.btnp(pulo):
             self.chao = False
             self.original_y = self.y
-
         if not self.chao:
-            #colisao tem q ser antes por prioridade
-            if self.colisao(personagemB, Inimigo):
-                self.y += 0.5
-                self.chao = True
             #se andar para cima ele cai
             if self.original_y - 10 < self.y:
                 self.y -= 0.5
@@ -198,104 +177,78 @@ class Inimigo:
         return colisao_B or colisao_A
    
     def perseguir(self, personagemA, personagemB):
-        #salvar posições originais
-        x_anterior = self.x
-        y_anterior = self.y
-
         if self.vida <= 0:#sem isso tu continua sendo perseguida, mesmo se o inimigo morrer
             return
-        
-        if personagemB.vida <= 0:
-            seguir = personagemA
-
-        elif personagemA.vida <= 0:
-            seguir = personagemB
        
+       #salvar posições originais
+        x_anterior = self.x
+        y_anterior = self.y
+       
+        # "a" e "b" de pitagoras
+        dx1 = personagemA.x - self.x
+        dx2 = personagemB.x - self.x
+        dy1 = personagemA.y - self.y
+        dy2 = personagemB.y - self.y
+       
+        #pitagoras para indentificamos quem esta mais perto
+        pitagoras1 = math.sqrt(dx1**2 + dy1**2)
+        pitagoras2 = math.sqrt(dx2**2 + dy2**2)
+       
+        if pitagoras2 > pitagoras1:#True, persegue personagem1
+           
+           #personagemA.set_cor(15)
+
+           if personagemA.x > self.x:#Se personagem1 mais a direita
+                self.x += self.velocidade
+           else:#Se personagem1 mais a esquerda
+                self.x -= self.velocidade
+           if personagemA.y > self.y:#Se personagem1 mais a baixo
+                self.y += self.velocidade
+           else:#Se personagem1 mais a cima
+                self.y -= self.velocidade
+
         else:
            
-        
-            # "a" e "b" de pitagoras
-            dx1 = personagemA.x - self.x
-            dx2 = personagemB.x - self.x
-            dy1 = personagemA.y - self.y
-            dy2 = personagemB.y - self.y
-        
-            #pitagoras para indentificamos quem esta mais perto
-            pitagoras1 = math.sqrt(dx1**2 + dy1**2)
-            pitagoras2 = math.sqrt(dx2**2 + dy2**2)
-        
-            if (pitagoras2 > pitagoras1) :#True, persegue personagem1
-                    seguir = personagemA
-            else:
-                    seguir = personagemB
-            #personagemA.set_cor(15)
+           #personagemB.set_cor(8)
 
-        if seguir.x > self.x:#Se personagem1 mais a direita
-            self.x += self.velocidade
-        else:#Se personagem1 mais a esquerda
-            self.x -= self.velocidade
-        if seguir.y > self.y:#Se personagem1 mais a baixo
-            self.y += self.velocidade
-        else:#Se personagem1 mais a cima
-            self.y -= self.velocidade
+           if personagemB.x > self.x:#Se personagem2 mais a direita
+                self.x += self.velocidade
+           else:#Se personagem2 mais a esquerda
+                self.x -= self.velocidade
+           if personagemB.y > self.y:#Se personagem2 mais a baixo
+                self.y += self.velocidade
+           else:#Se personagem2 mais a cima
+                self.y -= self.velocidade
 
+        if self.colisao_i(
+           personagemA,
+           personagemB
+        ):#não invadir na colisão
+       
 
-        if self.colisao_i(personagemA, personagemB):
-           self.x = x_anterior
-           self.y = y_anterior
-
-    def colisao_alcance_ataque_inimigo(self, personagem):
-        alcance = 5 #não tem como tacar dentro do inimigo, então tem que atacar antes
-
-        return (
-                personagem.vida > 0
-                and
-                self.x - alcance< personagem.x + personagem.largura
-                and
-                self.x + self.largura + alcance> personagem.x
-                and
-                self.y - alcance < personagem.y + personagem.altura
-                and
-                self.y + self.altura + alcance> personagem.y
-            )
-    
-    def combate(self, personagemA, personagemB):
-        if self.vida > 0:
-            if self.colisao_alcance_ataque_inimigo(personagemA):
-                personagemA.vida -= self.dano 
-            if self.colisao_alcance_ataque_inimigo(personagemB):
-                personagemB.vida -= self.dano          
-                #ele persegui o fantasma do ultimo player, só é um bug se eu não ignorar
+            #recuperando os valores originais, eles mudaram em pitagoras
+            self.x = x_anterior
+            self.y = y_anterior
+           
 class Jogo:
 
     def __init__(self):
-        x_mapa = 360
-        y_mapa = 200
-        pyxel.init(x_mapa, y_mapa)#tamanho da tela
-        pyxel.load("my_resource.pyxres")#chamando a imagem
+
+        pyxel.init(160, 120)#tamanho da tela
 
         self.personagem1 = Personagem(
-            20, 20, 10, 10, 5, 100, 5, 10, x_mapa, y_mapa)
+            20, 20, 10, 10, 5, 100, 5, 10)
             #x, y, largura, altura, cor,vida, velocidade, massa
 
         self.personagem2 = Personagem(
-            20,#x,
-            80, #y,
-            10, #largura,
-            10, #altura,
-            6, #cor,
-            100, #vida, 
-            5, #velocidade,
-            10,#massa
-            x_mapa,
-            y_mapa )
-                 
+            20, 80, 10, 10, 6, 100, 5, 10)
+            #x, y, largura, altura, cor,vida, velocidade, massa
 
         self.inimigo = Inimigo(
             80, 40, 10, 10, 8,300, 2, 5, self.personagem1, self.personagem2)
             #x, y, largura, altura, cor, vida, velocidade, massa, personagemA, personagemB
 
-        pyxel.run(self.update, self.draw)#dejeito nenhum ponha algo depois disso
+        pyxel.run(self.update, self.draw)#deixei nenhum ponha algo depois disso
 
     def update(self):
         # Personagem 1 - WASD
@@ -305,7 +258,7 @@ class Jogo:
             pyxel.KEY_A,
             pyxel.KEY_D,
             self.personagem2,
-            self.inimigo,
+            self.inimigo
         )
 
         # Personagem 2 - Setas
@@ -323,48 +276,27 @@ class Jogo:
             self.personagem1
         )
 
-        self.personagem1.combate (
+        self.personagem1.combate(
             pyxel.KEY_J,
             pyxel.KEY_K,
-            self.inimigo,
-            self.personagem2
+            self.inimigo
         )
 
         self.personagem2.combate(
             pyxel.KEY_KP_1,
             pyxel.KEY_KP_2,
-            self.inimigo,
-            self.personagem1
-        )
-
-        self.inimigo.combate(
-            self.personagem1,
-            self.personagem2
+            self.inimigo
         )
        
     def draw(self):
 
         pyxel.cls(0)
-        pyxel.bltm(
-        0, #eixo x
-        0, #eixo y
-        0, #qual timelap
-        0, #posiçao x no timelap
-        0, #posiçao y no timelap
-        450, #largura que sera desenha 
-        200 #altura que sera desenhada
-    )
+
         self.personagem1.desenhar()
         self.personagem2.desenhar()
         self.inimigo.desenhar()
         s = f" {self.inimigo.vida:>4}"#int para string
         pyxel.text(50, 60, s, 7)#texto na tela, s tem que ser string
-
-        b = f" {self.personagem1.vida:>4}"#int para string
-        pyxel.text(50, 30, b, 7)#texto na tela, s tem que ser string
-
-        a = f" {self.personagem2.vida:>4}"#int para string
-        pyxel.text(10, 60, a, 7)#texto na tela, s tem que ser string
        
 
 Jogo()
