@@ -102,7 +102,7 @@ class Personagem:
             if self.x < 0: #fica dentro do espaço da tela
                 self.x = 0
 
-        if pyxel.btn(baixo):
+        if pyxel.btn(baixo) and self.chao:
             self.y += self.velocidade
 
             if self.colisao(personagemB, inimigo):
@@ -133,19 +133,17 @@ class Personagem:
         if not self.chao:
             #colisao tem q ser antes por prioridade
             if self.colisao(personagemB, Inimigo):
-                self.y += 0.5
+                self.y += 1
                 self.chao = True
             #se andar para cima ele cai
             if self.original_y - 10 < self.y:
-                self.y -= 0.5
+                self.y -= 1
             else:
                 self.chao = True
            
         else:
             if self.y < self.original_y:#erro esta aqui
-                self.y += 0.5
-                print(self.y, "y")
-                print(self.original_y, "original y")
+                self.y += 1
                
            
 class Inimigo:
@@ -269,10 +267,11 @@ class Inimigo:
 class Jogo:
 
     def __init__(self):
-        x_mapa = 360
+        x_mapa = 1000
         y_mapa = 200
-        pyxel.init(x_mapa, y_mapa)#tamanho da tela
+        pyxel.init(360, y_mapa)#tamanho da tela
         pyxel.load("my_resource.pyxres")#chamando a imagem
+        self.camera_x = 0
 
         self.personagem1 = Personagem(
             20, 20, 10, 10, 5, 100, 5, 10, x_mapa, y_mapa)
@@ -292,7 +291,7 @@ class Jogo:
                  
 
         self.inimigo = Inimigo(
-            80, 40, 10, 10, 8,300, 2, 5, self.personagem1, self.personagem2)
+            80, 40, 10, 10, 8,100, 2, 2, self.personagem1, self.personagem2)
             #x, y, largura, altura, cor, vida, velocidade, massa, personagemA, personagemB
 
         pyxel.run(self.update, self.draw)#dejeito nenhum ponha algo depois disso
@@ -343,7 +342,32 @@ class Jogo:
         )
        
     def draw(self):
-
+        inimigo_na_tela = (
+            self.inimigo.x + self.inimigo.largura > self.camera_x
+            and
+            self.inimigo.x < self.camera_x+360
+        )
+        if inimigo_na_tela:
+            pass
+        else:
+            if self.personagem1.vida > 0 and self.personagem2.vida > 0:
+                lado_esquerdo_tela = self.personagem1.x
+                lado_direito_tela = self.personagem1.x + self.personagem1.largura
+                if self.personagem2.x < self.personagem1.x:
+                    lado_esquerdo_tela = self.personagem2.x
+                else:
+                    lado_direito_tela = self.personagem2.x + self.personagem2.largura
+                centro_tela_ambos_vivos = (lado_esquerdo_tela + lado_direito_tela) / 2 #media aritmetica
+                self.camera_x = centro_tela_ambos_vivos - 180
+            elif self.personagem1.vida > 0 :
+                self.camera_x = self.personagem1.x - 180
+            elif self.personagem2.vida > 0 :
+                self.camera_x = self.personagem2.x - 180
+        if self.camera_x < 0:
+            self.camera_x = 0
+        if self.camera_x > 640:
+            self.camera_x = 640
+        pyxel.camera(self.camera_x, 0)
         pyxel.cls(0)
         pyxel.bltm(
         0, #eixo x
@@ -351,7 +375,8 @@ class Jogo:
         0, #qual timelap
         0, #posiçao x no timelap
         0, #posiçao y no timelap
-        450, #largura que sera desenha 
+        1000, #largura que sera desenha 
+        200, #largura que sera desenha 
         200 #altura que sera desenhada
     )
         self.personagem1.desenhar()
