@@ -19,6 +19,8 @@ class Personagem:
         self.x_mapa = x_mapa
         self.y_mapa = y_mapa
         #velocidade é usada no lugar da aceleração
+        self.velocidade_dano = 5
+        self.esperar_atacar = 0
    
     """def set_cor(self, cor):
         self.cor = cor"""
@@ -34,7 +36,7 @@ class Personagem:
                 self.cor
         )
 
-    def colisao(self, personagemB, inimigo):
+    def colisao(self, personagemB, inimigos):
        
         #colisao com o personagem não utilizado
         colisao_B = (
@@ -48,17 +50,23 @@ class Personagem:
             and
             self.y + self.altura > personagemB.y #quadrado do personagem > que coodernada y do outro personagem (y cresce para baixo)
         )
-
-        colisao_inimigo =(
-            inimigo.vida > 0 #para a colisao sumir apos o inimigo morrer
-            and
-            self.x < inimigo.x + inimigo.largura #coodenada x do personagem < que o quadrado do inimigo
-            and self.x + self.largura > inimigo.x #quadrado do personagem > que coodernada x do inimigo
-            and self.y < inimigo.y + inimigo.altura #coodenada y do personagem < que o quadrado do inimigo (y cresce para baixo)
-            and self.y + self.altura > inimigo.y #quadrado do personagem > que coodernada y do inimigo (y cresce para baixo)
-        )
-
-        return colisao_B or colisao_inimigo
+        if colisao_B:
+            return True
+        
+        for inimigo in inimigos:
+            if inimigo.vida > 0:
+                colisao_inimigo = (
+                    self.x < inimigo.x + inimigo.largura #coodenada x do personagem < que o quadrado do outro
+                    and
+                    self.x + self.largura > inimigo.x #quadrado do personagem > que coodernada x do outro personagem
+                    and
+                    self.y < inimigo.y + inimigo.altura #coodenada y do personagem < que o quadrado do outro (y cresce para baixo)
+                    and
+                    self.y + self.altura > inimigo.y #quadrado do personagem > que coodernada y do outro personagem (y cresce para baixo)
+            )
+                if colisao_inimigo:
+                    return True
+        return False
     
     def colisao_alcance_ataque_personagem(self, inimigo):
             alcance = 5 #não tem como tacar dentro do inimigo, então tem que atacar antes
@@ -67,9 +75,12 @@ class Personagem:
                 inimigo.vida > 0 #para a colisao sumir apos o inimigo morrer
                 and
                 self.x  - alcance< inimigo.x + inimigo.largura #o alcance começa antes da coodenada x do personagem, lembrar que a coordena começa no centro dele  < que o quadrado do inimigo
-                and self.x + self.largura + alcance> inimigo.x #quadrado do personagem > que coodernada x do inimigo
-                and self.y - alcance < inimigo.y + inimigo.altura #o alcance começa antes da coodenada y do personagem, lembrar que a coordena começa no centro dele < que o quadrado do inimigo (y cresce para baixo)
-                and self.y + self.altura + alcance> inimigo.y #quadrado do personagem > que coodernada y do inimigo (y cresce para baixo)
+                and 
+                self.x + self.largura + alcance> inimigo.x #quadrado do personagem > que coodernada x do inimigo
+                and 
+                self.y - alcance < inimigo.y + inimigo.altura #o alcance começa antes da coodenada y do personagem, lembrar que a coordena começa no centro dele < que o quadrado do inimigo (y cresce para baixo)
+                and 
+                self.y + self.altura + alcance> inimigo.y #quadrado do personagem > que coodernada y do inimigo (y cresce para baixo)
         )
 
 
@@ -80,7 +91,8 @@ class Personagem:
         esquerda,
         direita,
         personagemB,
-        inimigo
+        inimigo,
+        camera_para_colisao
     ):
 
         segundo_terceiro_y_original = self.y
@@ -121,18 +133,28 @@ class Personagem:
             if self.y < 0:
                 self.y = 0
 
-    def combate(self, ataque,pulo, Inimigo, personagemB):
-        if Inimigo.vida > 0:
-            if pyxel.btnp(ataque) and self.vida > 0:
-                if self.colisao_alcance_ataque_personagem(Inimigo):
-                    Inimigo.vida -= self.dano
+            #colisao
+        if self.x < camera_para_colisao:
+            self.x = camera_para_colisao
+        if self.x + self.largura > camera_para_colisao + 360:
+            self.x = camera_para_colisao + 360 - self.largura
+
+    def combate(self, ataque,pulo, inimigos, personagemB):
+        if self.esperar_atacar > 0:
+            self.esperar_atacar -= 1
+        if pyxel.btnp(ataque) and self.vida > 0 and self.esperar_atacar == 0:
+            for inimigo in inimigos:
+                if inimigo.vida > 0:
+                    if self.colisao_alcance_ataque_personagem(inimigo):
+                        inimigo.vida -= self.dano
+                        self.esperar_atacar = self.velocidade_dano
         if pyxel.btnp(pulo) and self.chao:
             self.chao = False
             self.original_y = self.y
 
         if not self.chao:
             #colisao tem q ser antes por prioridade
-            if self.colisao(personagemB, Inimigo):
+            if self.colisao(personagemB, inimigos):
                 self.y += 1
                 self.chao = True
             #se andar para cima ele cai
@@ -148,7 +170,7 @@ class Personagem:
            
 class Inimigo:
 
-    def __init__(self, x, y, largura, altura, cor, vida, velocidade, massa, personagemA, personagemB):
+    def __init__(self, x, y, largura, altura, cor, vida, velocidade, massa):
         self.x = x
         self.y = y
         self.largura = largura
@@ -158,10 +180,8 @@ class Inimigo:
         self.velocidade = velocidade
         self.massa = massa
         self.dano = massa*velocidade
-        self.personagemA_x = personagemA.x
-        self.personagemB_x = personagemB.x
-        self.personagemA_y = personagemA.y
-        self.personagemB_y = personagemB.y
+        self.velocidade_dano = 17
+        self.esperar_atacar = 0
 
 
     def desenhar(self):
@@ -174,9 +194,11 @@ class Inimigo:
                 self.cor
         )
 
-    def colisao_i(self, personagemB, personagemA):
+    def colisao_i(self, personagemB, personagemA, inimigos):
 
         colisao_B = (
+            personagemB.vida > 0
+            and
             self.x < personagemB.x + personagemB.largura
             and
             self.x + self.largura > personagemB.x
@@ -187,15 +209,32 @@ class Inimigo:
         )
 
         colisao_A = (
+            personagemA.vida > 0
+            and
             self.x < personagemA.x + personagemA.largura
             and self.x + self.largura > personagemA.x
             and self.y < personagemA.y + personagemA.altura
             and self.y + self.altura > personagemA.y
         )
 
-        return colisao_B or colisao_A
+        if colisao_B or colisao_A:
+            return True
+        for inimigo in inimigos:
+            if inimigo != self and inimigo.vida > 0:
+                colisao_inimigos = (
+                    self.x < inimigo.x + inimigo.largura
+                    and
+                    self.x + self.largura > inimigo.x
+                    and
+                    self.y < inimigo.y + inimigo.altura
+                    and
+                    self.y + self.altura > inimigo.y
+                )
+                if colisao_inimigos:
+                    return True
+        return False
    
-    def perseguir(self, personagemA, personagemB):
+    def perseguir(self, personagemA, personagemB, inimigos):
         #salvar posições originais
         x_anterior = self.x
         y_anterior = self.y
@@ -238,7 +277,7 @@ class Inimigo:
             self.y -= self.velocidade
 
 
-        if self.colisao_i(personagemA, personagemB):
+        if self.colisao_i(personagemA, personagemB, inimigos):
            self.x = x_anterior
            self.y = y_anterior
 
@@ -258,12 +297,31 @@ class Inimigo:
             )
     
     def combate(self, personagemA, personagemB):
-        if self.vida > 0:
+        if self.esperar_atacar > 0:
+            self.esperar_atacar -= 1
+
+        if self.vida > 0 and self.esperar_atacar == 0:
             if self.colisao_alcance_ataque_inimigo(personagemA):
                 personagemA.vida -= self.dano 
+                self.esperar_atacar = self.velocidade_dano
             if self.colisao_alcance_ataque_inimigo(personagemB):
-                personagemB.vida -= self.dano          
+                personagemB.vida -= self.dano   
+                self.esperar_atacar = self.velocidade_dano       
                 #ele persegui o fantasma do ultimo player, só é um bug se eu não ignorar
+class DoCao(Inimigo):
+    def perseguir(self, personagemA, personagemB, inimigos, camera_x):
+        if(
+            self.vida > 0
+            and
+            self.x + self.largura > camera_x
+            and
+            self.x < camera_x + 360
+        ):
+            super().perseguir(
+                personagemA,
+                personagemB,
+                inimigos
+            )
 class Jogo:
 
     def __init__(self):
@@ -272,6 +330,8 @@ class Jogo:
         pyxel.init(360, y_mapa)#tamanho da tela
         pyxel.load("my_resource.pyxres")#chamando a imagem
         self.camera_x = 0
+        self.incremento_camera = 5
+        self.continues = 2
 
         self.personagem1 = Personagem(
             20, 20, 10, 10, 5, 100, 5, 10, x_mapa, y_mapa)
@@ -290,13 +350,129 @@ class Jogo:
             y_mapa )
                  
 
-        self.inimigo = Inimigo(
-            80, 40, 10, 10, 8,100, 2, 2, self.personagem1, self.personagem2)
-            #x, y, largura, altura, cor, vida, velocidade, massa, personagemA, personagemB
+        self.inimigo = []
+        self.inimigo.append(
+            Inimigo(
+            80, #x,
+            40, #y,
+            10, #largura,
+            10, #altura,
+            8,#cor,
+            100, #vida,
+            2, #velocidade,
+            2)#massa
+            )
+        self.inimigo.append(
+            Inimigo(
+            200, #x,
+            100, #y,
+            10, #largura,
+            10, #altura,
+            8,#cor,
+            100, #vida,
+            2, #velocidade,
+            2) )#massa
+
+        self.inimigo.append(
+            Inimigo(
+            500, #x,
+            100, #y,
+            10, #largura,
+            10, #altura,
+            8,#cor,
+            100, #vida,
+            2, #velocidade,
+            2) )#massa   
+
+        self.chefe = DoCao(
+            950, #x,
+            100, #y,
+            10, #largura,
+            10, #altura,
+            15,#cor,
+            500, #vida,
+            4, #velocidade,
+            4 #massa
+        )  
+
+        self.chefe.velocidade_dano = 4   
 
         pyxel.run(self.update, self.draw)#dejeito nenhum ponha algo depois disso
 
+    def camera_colisao(self):
+        inimigo_tela = False
+        for inimigo in self.inimigo:
+            if inimigo.vida > 0:
+                if (
+                    inimigo.x + inimigo.largura > self.camera_x
+                    and
+                    inimigo.x < self.camera_x + 360
+                ):
+                    inimigo_tela = True
+        if inimigo_tela:
+            pass
+        else:
+            if self.personagem1.vida > 0 and self.personagem2.vida > 0:
+                lado_esquerdo_tela = self.personagem1.x
+                lado_direito_tela = self.personagem1.x + self.personagem1.largura
+                if self.personagem2.x < self.personagem1.x:
+                    lado_esquerdo_tela = self.personagem2.x
+                else:
+                    lado_direito_tela = self.personagem2.x + self.personagem2.largura
+                centro_tela_ambos_vivos = (
+                    lado_esquerdo_tela + lado_direito_tela
+                ) / 2
+                centro_tela_ambos_vivos2 = centro_tela_ambos_vivos - 180
+                if self.camera_x < centro_tela_ambos_vivos2:
+                    self.camera_x += self.incremento_camera
+                    if self.camera_x > centro_tela_ambos_vivos2:
+                        self.camera_x = centro_tela_ambos_vivos2
+                if self.camera_x > centro_tela_ambos_vivos2:
+                    self.camera_x -= self.incremento_camera
+                    if self.camera_x < centro_tela_ambos_vivos2:
+                        self.camera_x = centro_tela_ambos_vivos2
+            elif self.personagem1.vida > 0:
+                centro_tela_personagem1 = self.personagem1.x - 180
+                if self.camera_x < centro_tela_personagem1:
+                    self.camera_x += self.incremento_camera
+                    if self.camera_x > centro_tela_personagem1:
+                        self.camera_x = centro_tela_personagem1
+                if self.camera_x > centro_tela_personagem1:
+                    self.camera_x -= self.incremento_camera
+                    if self.camera_x < centro_tela_personagem1:
+                        self.camera_x = centro_tela_personagem1
+            elif self.personagem2.vida > 0:
+                centro_tela_personagem2 = self.personagem2.x - 180
+                if self.camera_x < centro_tela_personagem2:
+                    self.camera_x += self.incremento_camera
+                    if self.camera_x > centro_tela_personagem2:
+                        self.camera_x = centro_tela_personagem2
+                if self.camera_x > centro_tela_personagem2:
+                    self.camera_x -= self.incremento_camera
+                    if self.camera_x < centro_tela_personagem2:
+                        self.camera_x = centro_tela_personagem2
+        if self.camera_x < 0:
+            self.camera_x = 0
+        if self.camera_x > 640:
+            self.camera_x = 640
+    def reviver(self):
+            if self.personagem1.vida <=0:
+                if self.continues > 0:
+                    self.continues -= 1
+                    self.personagem1.vida = 100
+                    self.personagem1.x = self.camera_x+50
+                    self.personagem1.y = 20
+                    self.personagem1.chao = True
+            if self.personagem2.vida <=0:
+                if self.continues > 0:
+                    self.continues -= 1
+                    self.personagem2.vida = 100
+                    self.personagem2.x = self.camera_x+70
+                    self.personagem2.y = 80
+                    self.personagem2.chao = True
+
     def update(self):
+        self.camera_colisao()#tem q ser antes da movimentação se n a camera n anda
         # Personagem 1 - WASD
         self.personagem1.movimentacao(
             pyxel.KEY_W,
@@ -305,6 +481,7 @@ class Jogo:
             pyxel.KEY_D,
             self.personagem2,
             self.inimigo,
+            self.camera_x
         )
 
         # Personagem 2 - Setas
@@ -314,12 +491,27 @@ class Jogo:
             pyxel.KEY_LEFT,
             pyxel.KEY_RIGHT,
             self.personagem1,
-            self.inimigo
+            self.inimigo,
+            self.camera_x
         )
-       
-        self.inimigo.perseguir(
+        for inimigo in self.inimigo:
+            if (
+                inimigo.vida > 0
+                and
+                inimigo.x + inimigo.largura > self.camera_x
+                and
+                inimigo.x < self.camera_x + 390# 360 da tela and 30 fora dela
+            ):
+                inimigo.perseguir(
+                    self.personagem1,
+                    self.personagem2,
+                    self.inimigo
+                )
+        self.chefe.perseguir(
+            self.personagem1,
             self.personagem2,
-            self.personagem1
+            self.inimigo,
+            self.camera_x
         )
 
         self.personagem1.combate (
@@ -336,37 +528,20 @@ class Jogo:
             self.personagem1
         )
 
-        self.inimigo.combate(
+        for inimigo in self.inimigo:
+            inimigo.combate(
+                self.personagem1,
+                self.personagem2
+            )
+        self.chefe.combate(
             self.personagem1,
             self.personagem2
         )
+
+        self.reviver()        
+    
        
     def draw(self):
-        inimigo_na_tela = (
-            self.inimigo.x + self.inimigo.largura > self.camera_x
-            and
-            self.inimigo.x < self.camera_x+360
-        )
-        if inimigo_na_tela:
-            pass
-        else:
-            if self.personagem1.vida > 0 and self.personagem2.vida > 0:
-                lado_esquerdo_tela = self.personagem1.x
-                lado_direito_tela = self.personagem1.x + self.personagem1.largura
-                if self.personagem2.x < self.personagem1.x:
-                    lado_esquerdo_tela = self.personagem2.x
-                else:
-                    lado_direito_tela = self.personagem2.x + self.personagem2.largura
-                centro_tela_ambos_vivos = (lado_esquerdo_tela + lado_direito_tela) / 2 #media aritmetica
-                self.camera_x = centro_tela_ambos_vivos - 180
-            elif self.personagem1.vida > 0 :
-                self.camera_x = self.personagem1.x - 180
-            elif self.personagem2.vida > 0 :
-                self.camera_x = self.personagem2.x - 180
-        if self.camera_x < 0:
-            self.camera_x = 0
-        if self.camera_x > 640:
-            self.camera_x = 640
         pyxel.camera(self.camera_x, 0)
         pyxel.cls(0)
         pyxel.bltm(
@@ -381,15 +556,22 @@ class Jogo:
     )
         self.personagem1.desenhar()
         self.personagem2.desenhar()
-        self.inimigo.desenhar()
-        s = f" {self.inimigo.vida:>4}"#int para string
-        pyxel.text(50, 60, s, 7)#texto na tela, s tem que ser string
-
+        for inimigo in self.inimigo:
+            inimigo.desenhar()
+        texto_y = 60
+        self.chefe.desenhar()
+        for inimigo in self.inimigo:
+            s = f" {inimigo.vida:>4}"#int para string
+            pyxel.text(50, texto_y, s, 7)#texto na tela, s tem que ser string
+            texto_y += 10
+        pyxel.camera()
         b = f" {self.personagem1.vida:>4}"#int para string
-        pyxel.text(50, 30, b, 7)#texto na tela, s tem que ser string
+        pyxel.text(90, 30, b, 15)#texto na tela, s tem que ser string
 
         a = f" {self.personagem2.vida:>4}"#int para string
-        pyxel.text(10, 60, a, 7)#texto na tela, s tem que ser string
+        pyxel.text(270, 30, a, 15)#texto na tela, s tem que ser string
+
+        pyxel.text(150,30,f"CONTINUES: {self.continues}", 10)
        
 
 Jogo()
