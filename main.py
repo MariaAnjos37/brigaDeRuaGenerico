@@ -28,12 +28,17 @@ class Personagem:
     #desenhar o personagem
     def desenhar(self):
         if self.vida > 0:
-            pyxel.rect(
+            pyxel.blt(
                 self.x,
                 self.y,
-                self.largura,
-                self.altura,
-                self.cor
+                1,#banco de imagens
+                0,#x banco de imagens
+                0,#y
+                21,
+                26,
+                #self.largura,
+                #self.altura,
+                14
         )
 
     def colisao(self, personagemB, inimigos):
@@ -139,7 +144,7 @@ class Personagem:
         if self.x + self.largura > camera_para_colisao + 360:
             self.x = camera_para_colisao + 360 - self.largura
 
-    def combate(self, ataque,pulo, inimigos, personagemB):
+    def combate(self, ataque,pulo, inimigos, personagemB, chefe):
         if self.esperar_atacar > 0:
             self.esperar_atacar -= 1
         if pyxel.btnp(ataque) and self.vida > 0 and self.esperar_atacar == 0:
@@ -148,6 +153,10 @@ class Personagem:
                     if self.colisao_alcance_ataque_personagem(inimigo):
                         inimigo.vida -= self.dano
                         self.esperar_atacar = self.velocidade_dano
+            if chefe.vida > 0:
+                if self.colisao_alcance_ataque_personagem(chefe):
+                    chefe.vida -= self.dano
+                    self.esperar_atacar = self.velocidade_dano
         if pyxel.btnp(pulo) and self.chao:
             self.chao = False
             self.original_y = self.y
@@ -334,14 +343,14 @@ class Jogo:
         self.continues = 2
 
         self.personagem1 = Personagem(
-            20, 20, 10, 10, 5, 100, 5, 10, x_mapa, y_mapa)
+            20, 20, 20, 25, 5, 100, 5, 10, x_mapa, y_mapa)
             #x, y, largura, altura, cor,vida, velocidade, massa
 
         self.personagem2 = Personagem(
             20,#x,
             80, #y,
-            10, #largura,
-            10, #altura,
+            20, #largura,
+            25, #altura,
             6, #cor,
             100, #vida, 
             5, #velocidade,
@@ -390,7 +399,7 @@ class Jogo:
             10, #largura,
             10, #altura,
             15,#cor,
-            500, #vida,
+            50, #vida,
             4, #velocidade,
             4 #massa
         )  
@@ -463,6 +472,8 @@ class Jogo:
                     self.personagem1.x = self.camera_x+50
                     self.personagem1.y = 20
                     self.personagem1.chao = True
+                    self.personagem1.original_y = self.personagem1.y
+                    self.personagem1.esperar_atacar = 0
             if self.personagem2.vida <=0:
                 if self.continues > 0:
                     self.continues -= 1
@@ -470,6 +481,8 @@ class Jogo:
                     self.personagem2.x = self.camera_x+70
                     self.personagem2.y = 80
                     self.personagem2.chao = True
+                    self.personagem2.original_y = self.personagem2.y
+                    self.personagem2.esperar_atacar = 0
 
     def update(self):
         self.camera_colisao()#tem q ser antes da movimentação se n a camera n anda
@@ -518,14 +531,16 @@ class Jogo:
             pyxel.KEY_J,
             pyxel.KEY_K,
             self.inimigo,
-            self.personagem2
+            self.personagem2,
+            self.chefe
         )
 
         self.personagem2.combate(
             pyxel.KEY_KP_1,
             pyxel.KEY_KP_2,
             self.inimigo,
-            self.personagem1
+            self.personagem1,
+            self.chefe
         )
 
         for inimigo in self.inimigo:

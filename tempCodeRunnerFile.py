@@ -1,8 +1,3 @@
-if pyxel.btn(direita):
-            self.x += 2
-
-            if self.colisao(personagemB):
-                self.x -= 2
-
-            if self.x > 160 - self.largura:
-                self.x = 160 - self.largura
+           if chefe.vida > 0:
+                if self.colisao_alcance_ataque_personagem(chefe):
+                    chefe.vida -= self.dano
