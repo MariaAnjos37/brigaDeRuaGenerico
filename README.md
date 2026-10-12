@@ -1,4 +1,4 @@
-Nome do Jogo: Aventura STEAM
+Nome do Jogo: Briga simples
 
 Descrição do jogo
 Briga simples, é um jogo com estilo conhecido como "Briga de rua", tendo uma proposta muito simples, andar e bater; perfeito para quem não quer algo que precise focar, ou como em muitos jogos do genero, jogar com um amigo.
